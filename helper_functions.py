@@ -61,7 +61,7 @@ def test_stationarity(timeseries, var):
     print(f'p-value: {result[1]}')
     print(f'Critical Values: {result[4]}')
 
-def get_ts(sensor_id,start_date,end_date,cursor):
+def get_ts(sensor_id,start_date,end_date,cursor,return_veh_type=False):
     
     dec_to_min_dict = {
     0.0 : 0,
@@ -120,7 +120,45 @@ def get_ts(sensor_id,start_date,end_date,cursor):
         ts_all[variable_name] = ts_all[col].interpolate(method='time')
         ts_all[variable_name].bfill(inplace=True)
     
-    return ts, ts_all
+    
+    # Create all vehicles data frame with 3 lanes
+    ts_short = pd.DataFrame(index = datetime_index, columns = ts_columns)
+
+    ts_short['Lane 1'] = ts[ts['Lane'] == 'lane1']['Short_Veh']
+    ts_short['Lane 2'] = ts[ts['Lane'] == 'lane2']['Short_Veh']
+    ts_short['Lane 3'] = ts[ts['Lane'] == 'lane3']['Short_Veh']
+    ts_short['All Lanes'] = ts.groupby(ts.index).sum('Short_Veh')['Short_Veh']
+
+    #Add Weekend Flag
+    ts_short['Weekend'] = ts_short.index.dayofweek >= 5
+
+    #Interpolate missing data
+    for col in ts_columns:
+        variable_name = f"{col}_interpolated"
+        ts_short[variable_name] = ts_short[col].interpolate(method='time')
+        ts_short[variable_name].bfill(inplace=True)
+        
+    # Create all vehicles data frame with 3 lanes
+    ts_long = pd.DataFrame(index = datetime_index, columns = ts_columns)
+
+    ts_long['Lane 1'] = ts[ts['Lane'] == 'lane1']['Long_Veh']
+    ts_long['Lane 2'] = ts[ts['Lane'] == 'lane2']['Long_Veh']
+    ts_long['Lane 3'] = ts[ts['Lane'] == 'lane3']['Long_Veh']
+    ts_long['All Lanes'] = ts.groupby(ts.index).sum('Long_Veh')['Long_Veh']
+
+    #Add Weekend Flag
+    ts_long['Weekend'] = ts_long.index.dayofweek >= 5
+
+    #Interpolate missing data
+    for col in ts_columns:
+        variable_name = f"{col}_interpolated"
+        ts_long[variable_name] = ts_long[col].interpolate(method='time')
+        ts_long[variable_name].bfill(inplace=True)
+    
+    if return_veh_type:
+        return ts, ts_all, ts_short, ts_long
+    else:
+        return ts, ts_all
     
 def analyse_time_series_of_sensor(sensor_id,start_date,end_date,cursor):
     
